@@ -14,7 +14,7 @@ import (
 type cliCommand struct {
 	name string
 	description string
-	callback func() error
+	callback func(pg *pagination) error
 }
 
 var commandList map[string]cliCommand
@@ -33,14 +33,20 @@ func init() {
         },
 		"map": {
 			name:        "map",
-            description: "Displays next 20 locations",
+            description: "Displays next 20 location areas",
             callback:    commandMap,
+		},
+		"mapb": {
+			name: "mapb",
+			description: "Display previous 20 location areas",
+			callback: commandMapb,
 		},
     }
 }
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	pg := pagination{}
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
@@ -49,7 +55,7 @@ func main() {
 		if command, ok := commandList[input]; !ok {
 			fmt.Println("Unknown Command")
 		} else {
-			err := command.callback()
+			err := command.callback(&pg)
 			if err != nil {
 				fmt.Errorf("%v", err)
 			}
@@ -58,25 +64,19 @@ func main() {
 	}
 }
 
-
 func cleanInput(text string) []string {
 	trimmed := strings.TrimSpace(text) 
 	words := strings.Fields(strings.ToLower(trimmed))
-	// for _, word := range words {
-	// 	fmt.Println(word)
-	// }
 	return words
 } 
 
-
-func commandExit() error {
+func commandExit(pg *pagination) error {
     fmt.Println("Closing the Pokedex... Goodbye!")
     os.Exit(0)
     return nil
 }
 
-
-func commandHelp() error {
+func commandHelp(pg *pagination) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage: ")
 	for command, _ := range commandList {
@@ -85,8 +85,14 @@ func commandHelp() error {
 	return nil
 }
 
-func commandMap() error {
-	res, err := http.Get("https://pokeapi.co/api/v2/location")
+func commandMap(pg *pagination) error {
+	var url string
+	if pg.Next == "" {
+		url = "https://pokeapi.co/api/v2/location-area/"
+	} else {
+		url = pg.Next
+	}
+	res, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,17 +105,58 @@ func commandMap() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Debug: %v\n", res)
 	// Decode the json bytes into go struct
 	var locations locationList
 	if err := json.Unmarshal(body, &locations); err != nil {
 		return err
 	}
+
 	// Display the 20 locations from map.results
-	fmt.Printf("Debug: %v", locations)
-	fmt.Println("The first 20 locations are: ")
-	for _, location := range locations.Results {
-		fmt.Println(location.Name)
+	for _, locationArea := range locations.Results {
+		fmt.Println(locationArea.Name)
 	}
+
+	// Update next field to return next page for next web response
+	pg.Next = locations.Next
+	pg.Previous = locations.Previous
+	return nil
+}
+
+func commandMapb(pg* pagination) error {
+	var url string
+	if pg.Previous == "" {
+		fmt.Println("you're on the first page")
+		return nil
+	} else {
+		url = pg.Previous
+	}
+
+	res, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	// Parse json into a slice of bytes
+	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Decode the json bytes into go struct
+	var locations locationList
+	if err := json.Unmarshal(body, &locations); err != nil {
+		return err
+	}
+
+	// Display the 20 locations from map.results
+	for _, locationArea := range locations.Results {
+		fmt.Println(locationArea.Name)
+	}
+
+	// update Previous field for return previous page for next web response
+	pg.Previous = locations.Previous
+	pg.Next = locations.Next
 	return nil
 }

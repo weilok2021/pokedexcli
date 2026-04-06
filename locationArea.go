@@ -4,10 +4,10 @@ type locationList struct {
 	Count int `json:"count"`
 	Next string `json:"next"`
 	Previous string `json:"previous"`
-	Results []location `json:"results"`
+	Results []locationArea `json:"results"`
 }
 
-type location struct {
+type locationArea struct {
 	Name string `json:"name"`
 	Url string `json:"url"`
 }
