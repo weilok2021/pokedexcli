@@ -5,6 +5,10 @@ import (
 	"strings"
 	"bufio"
 	"os"
+	"net/http"
+	"encoding/json"
+	"log"
+	"io"
 )
 
 type cliCommand struct {
@@ -27,6 +31,11 @@ func init() {
             description: "Displays a help message",
             callback:    commandHelp,
         },
+		"map": {
+			name:        "map",
+            description: "Displays next 20 locations",
+            callback:    commandMap,
+		},
     }
 }
 
@@ -76,3 +85,31 @@ func commandHelp() error {
 	return nil
 }
 
+func commandMap() error {
+	res, err := http.Get("https://pokeapi.co/api/v2/location")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+	// Parse json into a slice of bytes
+	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Debug: %v\n", res)
+	// Decode the json bytes into go struct
+	var locations locationList
+	if err := json.Unmarshal(body, &locations); err != nil {
+		return err
+	}
+	// Display the 20 locations from map.results
+	fmt.Printf("Debug: %v", locations)
+	fmt.Println("The first 20 locations are: ")
+	for _, location := range locations.Results {
+		fmt.Println(location.Name)
+	}
+	return nil
+}
