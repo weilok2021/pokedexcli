@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"log"
 	"io"
+	"time"
+	"github.com/weilok2021/pokedexcli/internal/pokecache"
 )
 
 type cliCommand struct {
@@ -18,6 +20,7 @@ type cliCommand struct {
 }
 
 var commandList map[string]cliCommand
+var cache *pokecache.Cache
 
 func init() {
     commandList = map[string]cliCommand{
@@ -42,6 +45,8 @@ func init() {
 			callback: commandMapb,
 		},
     }
+
+	cache = pokecache.NewCache(5 * time.Minute)
 }
 
 func main() {
@@ -88,15 +93,36 @@ func commandHelp(pg *pagination) error {
 func commandMap(pg *pagination) error {
 	var url string
 	if pg.Next == "" {
-		url = "https://pokeapi.co/api/v2/location-area/"
+		url = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 	} else {
 		url = pg.Next
 	}
+
+	// check to see if the url already stored in cache, 
+	// if it is, Print locationarea here and return.
+	if bytes, ok := cache.Get(url); ok {
+		// Decode the json bytes into go struct
+		var locations locationList
+		if err := json.Unmarshal(bytes, &locations); err != nil {
+			return err
+		}
+
+		// Display the 20 locations from map.results
+		for _, locationArea := range locations.Results {
+			fmt.Println(locationArea.Name)
+		}
+		pg.Next = locations.Next
+		pg.Previous = locations.Previous
+		return nil
+	}
+
+	// returns a response pointer to Response struct
 	res, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer res.Body.Close()
+
 	// Parse json into a slice of bytes
 	body, err := io.ReadAll(res.Body)
 	if res.StatusCode > 299 {
@@ -105,6 +131,10 @@ func commandMap(pg *pagination) error {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Cache this resposne bytes, so next read will be much faster
+	cache.Add(url, body)
+
 	// Decode the json bytes into go struct
 	var locations locationList
 	if err := json.Unmarshal(body, &locations); err != nil {
@@ -131,11 +161,31 @@ func commandMapb(pg* pagination) error {
 		url = pg.Previous
 	}
 
+	// Check to see if the url already stored in cache, 
+	// if it is, Print locationarea here and return.
+	if bytes, ok := cache.Get(url); ok {
+		// Decode the json bytes into go struct
+		var locations locationList
+		if err := json.Unmarshal(bytes, &locations); err != nil {
+			return err
+		}
+
+		// Display the 20 locations from map.results
+		for _, locationArea := range locations.Results {
+			fmt.Println(locationArea.Name)
+		}		
+
+		pg.Next = locations.Next
+		pg.Previous = locations.Previous
+		return nil
+	}
+
 	res, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer res.Body.Close()
+
 	// Parse json into a slice of bytes
 	body, err := io.ReadAll(res.Body)
 	if res.StatusCode > 299 {
@@ -144,6 +194,10 @@ func commandMapb(pg* pagination) error {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Cache this response bytes, so next read will be much faster
+	cache.Add(url, body)
+
 	// Decode the json bytes into go struct
 	var locations locationList
 	if err := json.Unmarshal(body, &locations); err != nil {
