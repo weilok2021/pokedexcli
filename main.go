@@ -11,12 +11,13 @@ import (
 	"io"
 	"time"
 	"github.com/weilok2021/pokedexcli/internal/pokecache"
+	"math/rand"
 )
 
 type cliCommand struct {
 	name string
 	description string
-	callback func(pg *pagination, areaName string) error
+	callback func(pg *pagination, argument string) error
 }
 
 var commandList map[string]cliCommand
@@ -49,6 +50,11 @@ func init() {
 			description: "Display all pokemons in this selected locationArea",
 			callback: commandExplore,
 		},
+		"catch": {
+			name: "catch",
+			description: "Attempt to catch the pokemon based on name",
+			callback: commandCatch,
+		},
     }
 
 	cache = pokecache.NewCache(5 * time.Minute)
@@ -65,11 +71,16 @@ func main() {
 		if command, ok := commandList[input[0]]; !ok {
 			fmt.Println("Unknown Command")
 		} else {
-			var areaExplore string 
+			// var areaExplore string 
+			// var pokemonName string
+			var argv string
 			if input[0] == "explore" && len(input) == 2{
-				areaExplore = input[1]
+				argv = input[1]
+			} else if input[0] == "catch" && len(input) == 2{
+				argv = input[1]
 			}
-			err := command.callback(&pg, areaExplore)
+
+			err := command.callback(&pg, argv)
 			if err != nil {
 				fmt.Errorf("%v", err)
 			}
@@ -270,5 +281,65 @@ func commandExplore(pg* pagination, areaName string) error {
 	for _, pokemonStruct := range areaExplored.PokemonEncounters {
 		fmt.Println(pokemonStruct.Pokemon.Name)
 	}		
+	return nil
+}
+
+func commandCatch(pg* pagination, pokemonName string) error {
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s/", pokemonName)
+	// Check to see if the url already stored in cache, 
+	// if it is, get the pokemon and attempt to catch it.
+	if bytes, ok := cache.Get(url); ok {
+		// Decode the json bytes into go struct
+		var pokemon Pokemon
+		if err := json.Unmarshal(bytes, &pokemon); err != nil {
+			return err
+		}
+
+		fmt.Printf("Throwing a Pokeball at %s...\n", pokemon.Name)
+		fmt.Printf("Reattempt to catch %s!!\n", pokemon.Name)
+
+		if rand.Intn(pokemon.BaseExperience) <= 50 {
+			fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
+			fmt.Printf("%s was caught!\n", pokemon.Name)
+		} else {
+			fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
+			fmt.Printf("%s escaped!\n", pokemon.Name)
+		}
+		return nil
+	}
+
+
+	res, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	// Convert *Response into slices of Byte
+	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// cache response bytes
+	cache.Add(url, body)
+
+	var pokemon Pokemon
+	if err := json.Unmarshal(body, &pokemon); err != nil {
+		return err
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemon.Name)
+
+	if rand.Intn(pokemon.BaseExperience) <= 50 {
+		fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
+		fmt.Printf("%s was caught!\n", pokemon.Name)
+	} else {
+		fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
+		fmt.Printf("%s escaped!\n", pokemon.Name)
+	}
 	return nil
 }

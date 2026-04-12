@@ -14,7 +14,7 @@ Built as part of the [boot.dev](https://www.boot.dev) backend developer roadmap.
 - [x] PokeAPI integration with JSON deserialization
 - [x] In-memory cache with concurrent-safe background cleanup
 - [x] Explore location areas
-- [ ] Catch Pokemon
+- [x] Catch Pokemon
 - [ ] Inspect caught Pokemon
 
 ### Chapter 3: Pokedex
