@@ -13,7 +13,7 @@ Built as part of the [boot.dev](https://www.boot.dev) backend developer roadmap.
 ### Chapter 2: Caching
 - [x] PokeAPI integration with JSON deserialization
 - [x] In-memory cache with concurrent-safe background cleanup
-- [ ] Explore location areas
+- [x] Explore location areas
 - [ ] Catch Pokemon
 - [ ] Inspect caught Pokemon
 
