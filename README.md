@@ -18,5 +18,5 @@ Built as part of the [boot.dev](https://www.boot.dev) backend developer roadmap.
 - [x] Inspect caught Pokemon
 
 ### Chapter 3: Pokedex
-- [ ] Pokedex
+- [x] Pokedex
 - [ ] Submission

@@ -61,6 +61,11 @@ func init() {
 			description: "Inspect the catched pokemon info in stats (if existed)",
 			callback: commandInspect,
 		},
+		"pokedex": {
+			name: "pokedex",
+			description: "prints a list of all the names of the Pokemon the user has caught",
+			callback: commandPokedex,
+		},
     }
 
 	cache = pokecache.NewCache(5 * time.Minute)
@@ -356,6 +361,18 @@ func commandInspect(pg* pagination, pokemonName string) error {
 
 	} else {
 		fmt.Println("You haven't catch this pokemon.")
+	}
+	return nil
+}
+
+func commandPokedex(pg* pagination, _ string) error {
+	if len(pokemonStorage) == 0 {
+		fmt.Println("Pokemon Storage is empty!")
+		return nil
+	}
+	fmt.Println("Your Pokedex:")
+	for name, _ := range pokemonStorage {
+		fmt.Printf("  - %s\n", name)
 	}
 	return nil
 }
