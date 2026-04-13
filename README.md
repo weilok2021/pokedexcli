@@ -15,7 +15,7 @@ Built as part of the [boot.dev](https://www.boot.dev) backend developer roadmap.
 - [x] In-memory cache with concurrent-safe background cleanup
 - [x] Explore location areas
 - [x] Catch Pokemon
-- [ ] Inspect caught Pokemon
+- [x] Inspect caught Pokemon
 
 ### Chapter 3: Pokedex
 - [ ] Pokedex

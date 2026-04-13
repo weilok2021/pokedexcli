@@ -21,6 +21,7 @@ type cliCommand struct {
 }
 
 var commandList map[string]cliCommand
+var pokemonStorage map[string]Pokemon
 var cache *pokecache.Cache
 
 func init() {
@@ -55,9 +56,15 @@ func init() {
 			description: "Attempt to catch the pokemon based on name",
 			callback: commandCatch,
 		},
+		"inspect": {
+			name: "inspect",
+			description: "Inspect the catched pokemon info in stats (if existed)",
+			callback: commandInspect,
+		},
     }
 
 	cache = pokecache.NewCache(5 * time.Minute)
+	pokemonStorage = make(map[string]Pokemon)
 }
 
 func main() {
@@ -71,15 +78,10 @@ func main() {
 		if command, ok := commandList[input[0]]; !ok {
 			fmt.Println("Unknown Command")
 		} else {
-			// var areaExplore string 
-			// var pokemonName string
-			var argv string
-			if input[0] == "explore" && len(input) == 2{
-				argv = input[1]
-			} else if input[0] == "catch" && len(input) == 2{
+			var argv string // could be locationArea or pokemon name
+			if len(input) == 2 {
 				argv = input[1]
 			}
-
 			err := command.callback(&pg, argv)
 			if err != nil {
 				fmt.Errorf("%v", err)
@@ -299,6 +301,7 @@ func commandCatch(pg* pagination, pokemonName string) error {
 		fmt.Printf("Reattempt to catch %s!!\n", pokemon.Name)
 
 		if rand.Intn(pokemon.BaseExperience) <= 50 {
+			pokemonStorage[pokemon.Name] = pokemon
 			fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
 			fmt.Printf("%s was caught!\n", pokemon.Name)
 		} else {
@@ -336,10 +339,23 @@ func commandCatch(pg* pagination, pokemonName string) error {
 
 	if rand.Intn(pokemon.BaseExperience) <= 50 {
 		fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
+		// keep track of catched pokemon
+		pokemonStorage[pokemon.Name] = pokemon
 		fmt.Printf("%s was caught!\n", pokemon.Name)
 	} else {
 		fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
 		fmt.Printf("%s escaped!\n", pokemon.Name)
+	}
+	return nil
+}
+
+func commandInspect(pg* pagination, pokemonName string) error {
+	if pokemon, ok := pokemonStorage[pokemonName]; ok {
+		fmt.Printf("Name: %s\n", pokemon.Name)
+		fmt.Printf("Base Experience: %d\n", pokemon.BaseExperience)
+
+	} else {
+		fmt.Println("You haven't catch this pokemon.")
 	}
 	return nil
 }
